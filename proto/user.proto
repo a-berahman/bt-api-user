@@ -1,0 +1,132 @@
+syntax="proto3";
+//User Action
+//
+//This show how to user User api
+package user;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/field_mask.proto";
+import "google/api/annotations.proto";//add annotation support to the protocol definition
+import "protoc-gen-swagger/options/annotations.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "github.com/mwitkow/go-proto-validators/validator.proto";
+
+option go_package = "proto";
+
+option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
+    info: {
+      version: "1.0";
+    };
+    external_docs: {
+      url: "https://github.com/a-berahman/bt-api-user";
+      description: "user repository";
+    }
+    schemes: HTTPS;
+  };
+
+  // Enable custom Marshal method.
+option (gogoproto.marshaler_all) = true;
+// Enable custom Unmarshal method.
+option (gogoproto.unmarshaler_all) = true;
+// Enable custom Size method (Required by Marshal and Unmarshal).
+option (gogoproto.sizer_all) = true;
+// Enable registration with golang/protobuf for the grpc-gateway.
+option (gogoproto.goproto_registration) = true;
+// Enable generation of XXX_MessageName methods for grpc-go/status.
+option (gogoproto.messagename_all) = true;
+
+//google.protobuf.Empty
+service UserService {
+    rpc AddUser(User) returns (UserID) {
+        //Add gRPC/HTTP mapping to the AddUser method. Specify the URL path template (/v1/product),
+        //the HTTP method ("post"), and what the message body looks like. * is used in the body mapping to define that every field not
+        //bound by the path template should be mapped to the request body
+        option (google.api.http) = {
+            post: "/api/v1/users"
+            body: "*"
+        };
+    }
+    rpc ListUsers(ListUsersRequest) returns (stream User) {
+        option (google.api.http) = {
+            get: "/api/v1/users"
+        };
+    }
+    rpc ListUsersByRole(UserRole) returns (stream User) {
+        option (google.api.http) = {
+            get: "/api/v1/users/role"
+        };
+    }
+    rpc UpdateUser(UpdateUserRequest) returns (User) {
+        option (google.api.http) = {
+            patch: "/api/v1/users/{user.id}"
+            body: "*"
+        };
+    }
+}
+
+enum Role {
+    GUEST = 0;
+    MEMBER = 1;
+    ADMIN = 2;
+}
+
+message UserID{
+    string id=1;
+}
+message User {
+    string id=1;
+    string first_name=2[
+        (validator.field)={ 
+            string_not_empty:true
+            human_error:"Firstname is required"
+        }
+    ];
+    string last_name=3[
+        (validator.field)={ 
+            string_not_empty:true
+            human_error:"Lastname is required"
+        }
+    ];
+    string password=4[
+        (validator.field)={ 
+            string_not_empty:true
+            human_error:"Password is required"
+        }
+    ];
+    string email=5[
+        (validator.field)={ 
+        regex: "^[a-z0-9._%+\\-]+@[a-z0-9.\\-]+\\.[a-z]{2,4}$"
+        human_error: "Enter valid email"
+    }
+    ];
+    Role role = 6;
+    // google.protobuf.Timestamp create_date = 6 [
+    //     (gogoproto.stdtime) = true
+    // ];
+}
+
+message UserRole {
+    Role role = 1;
+}
+
+message UpdateUserRequest {
+    // The user resource which replaces the resource on the server.
+    User user = 1;
+
+    // The update mask applies to the resource. For the `FieldMask` definition,
+    // see https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask
+    google.protobuf.FieldMask update_mask = 2;
+}
+
+message ListUsersRequest {
+    // Only list users created after this timestamp
+    google.protobuf.Timestamp created_since = 1 [
+        (gogoproto.stdtime) = true
+    ];
+    // Only list users older than this Duration
+    google.protobuf.Duration older_than = 2 [
+        (gogoproto.stdduration) = true
+    ];
+}
